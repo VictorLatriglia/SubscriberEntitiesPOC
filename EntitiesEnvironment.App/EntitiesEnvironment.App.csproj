@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Soenneker.Utils.AutoBogus" Version="2.1.282" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EntitiesEnvironment.Entities\EntitiesEnvironment.Entities.csproj" />
+    <ProjectReference Include="..\EntitiesEnvironment.Environment\EntitiesEnvironment.Environment.csproj" />
+  </ItemGroup>
+
+</Project>
