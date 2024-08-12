@@ -44,10 +44,13 @@
                 _messages.Add(message);
                 if (message is DeathMessage deathMessage)
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine(deathMessage.Message);
-                    var deadNpc = Npcs.First(x => x.BroadcasterId == deathMessage.BroadcasterId);
-                    Npcs.Remove(deadNpc);
+                    var deadNpc = Npcs.FirstOrDefault(x => x.BroadcasterId == deathMessage.BroadcasterId);
+                    if (deadNpc != null)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine(deathMessage.Message);
+                        Npcs.Remove(deadNpc);
+                    }
                 }
                 else if (Npcs.Select(x => x.BroadcasterId).Contains(message.BroadcasterId))
                 {
@@ -62,11 +65,11 @@
                     }
 
                     Console.ForegroundColor = npcShooting!.Color;
-                    Console.WriteLine($"Entity {dmgMessage!.BroadcasterName} is shooting at {npcGettingHit!.NpcName} for {dmgMessage.Damage}dmg and with {dmgMessage.Accuracy * 10}% of hitting! BANG!");
-                    foreach (var item in _observers)
+                    Console.WriteLine($"Entity {dmgMessage!.BroadcasterName} is shooting at {npcGettingHit!.NpcName} for {dmgMessage.Damage}dmg and with {dmgMessage.Accuracy * 10}% of hitting! BANG! {(dmgMessage.Message.Contains("CHAOS") ? "CHAOS!!!!!" : "Retaliation shot :(")}");
+                    Parallel.ForEach(_observers, item =>
                     {
-                        item.OnNext(message);
-                    }
+                        Task.Run(() => item.OnNext(message));
+                    });
                 }
 
                 RemoveMessage(message);

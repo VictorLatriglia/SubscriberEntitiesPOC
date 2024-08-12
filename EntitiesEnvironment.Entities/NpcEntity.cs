@@ -58,6 +58,7 @@ namespace EntitiesEnvironment.Entities
         {
             if (value.BroadcasterId != BroadcasterId)
             {
+                bool shotsFired = false;
                 KnownEntities.Add(value.BroadcasterId);
                 if (
                     value is DamageMessage dmgMessage &&
@@ -84,7 +85,8 @@ namespace EntitiesEnvironment.Entities
                     }
                     else if (probabilityToRetaliate + AnimosityLevel > probabilityOfRetaliation)
                     {
-                        Shoot(dmgMessage.BroadcasterId);
+                        shotsFired = true;
+                        Shoot(dmgMessage.BroadcasterId, true);
                     }
                 }
                 else if (value is DeathMessage deathMessage)
@@ -92,18 +94,18 @@ namespace EntitiesEnvironment.Entities
                     KnownEntities.Remove(deathMessage.BroadcasterId);
                 }
                 var peace = 4;
-                if (AnimosityLevel > peace && KnownEntities.Count > 0)
+                if (AnimosityLevel > peace && KnownEntities.Count > 0 && !shotsFired)
                 {
                     var randomPerson = rng.Next(0, KnownEntities.Count);
-                    Shoot(KnownEntities.ElementAt(randomPerson));
+                    Shoot(KnownEntities.ElementAt(randomPerson), false);
                 }
             }
         }
 
-        public void Shoot(Guid directedAtId)
+        public void Shoot(Guid directedAtId, bool isRetaliation)
         {
             Accuracy += 1;
-            environment.BroadcastMessage(new DamageMessage(BroadcasterId, NpcName, Damage, Accuracy, directedAtId));
+            environment.BroadcastMessage(new DamageMessage(BroadcasterId, NpcName, Damage, Accuracy, directedAtId, isRetaliation));
         }
 
         public void Die()
