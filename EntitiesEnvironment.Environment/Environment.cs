@@ -1,10 +1,13 @@
-﻿namespace EntitiesEnvironment.Environment
+﻿using Newtonsoft.Json;
+
+namespace EntitiesEnvironment.Environment
 {
     public class Environment : IEnvironment
     {
         private readonly HashSet<IObserver<IMessage>> _observers = [];
 
-        private readonly HashSet<IMessage> _messages = [];
+        private readonly Queue<IMessage> _messages = [];
+        private readonly ManualResetEvent _waitHandle = new ManualResetEvent(false);
 
         public HashSet<INpcEntity> Npcs { get; }
 
@@ -17,7 +20,7 @@
         public IDisposable RegisterNpc(IObserver<IMessage> observer, INpcEntity npc)
         {
             // Check whether observer is already registered. If not, add it.
-            Npcs.Add(npc);
+            Npcs.Add(copyOf(npc));
             return Subscribe(observer);
         }
 
@@ -40,88 +43,99 @@
         {
             lock (_messages)
             {
-                _messages.Add(message);
-                if (message is DeathMessage deathMessage)
-                {
-                    var deadNpc = Npcs.FirstOrDefault(x =>
-                        x.BroadcasterId == deathMessage.BroadcasterId
-                    );
-                    if (deadNpc != null)
-                    {
-                        Npcs.Remove(deadNpc);
-                        PublishMessage(deathMessage);
-                        _messages.Remove(message);
-                    }
-                }
-                else if (Npcs.Select(x => x.BroadcasterId).Contains(message.BroadcasterId))
-                {
-                    var dmgMessage = message as DamageMessage;
-                    var npcShooting = Npcs.FirstOrDefault(x =>
-                        x.BroadcasterId == dmgMessage!.BroadcasterId
-                    );
-                    var npcGettingHit = Npcs.FirstOrDefault(x =>
-                        x.BroadcasterId == dmgMessage!.DirectedAtId
-                    );
-
-                    if (npcGettingHit == null || npcShooting == null)
-                    {
-                        _messages.Remove(message);
-                        return;
-                    }
-                }
+                _messages.Enqueue(message);
+                _waitHandle.Set(); // Signal the thread to wake up and process
+                _waitHandle.Reset(); // Reset after signaling
             }
         }
 
         private void BroadcastMessages()
         {
-            int count = 0;
-            while (count < 4)
+            while (true)
             {
+                List<DamageMessage> shotsFired;
                 lock (_messages)
                 {
-                    Console.WriteLine("Sending messages....");
-                    if (_messages.Count == 0)
-                        count++;
-                    foreach (var message in _messages)
-                    {
-                        PublishMessage(message);
-                    }
-                    _messages.Clear();
-                    Console.WriteLine(".....SENT......");
+                    shotsFired = _messages.OfType<DamageMessage>().ToList();
+                    _messages.Clear(); // Clear the messages after copying them
                 }
-                Thread.Sleep(1000);
+
+                var npcsIds = Npcs.Select(x => x.BroadcasterId).ToHashSet(); // Use a HashSet for faster lookup
+                foreach (
+                    var barrage in shotsFired
+                        .Where(x =>
+                            npcsIds.Contains(x.SendingEntity.BroadcasterId)
+                            || npcsIds.Contains(x.DirectedAtId)
+                        )
+                        .GroupBy(x => x.DirectedAtId)
+                )
+                {
+                    ProcessShotFired(barrage); // This is now outside the lock
+                }
+
+                _waitHandle.WaitOne(1000);
             }
+        }
+
+        private void ProcessShotFired(IGrouping<Guid, DamageMessage> barrage)
+        {
+            var npcGettingShot = Npcs.FirstOrDefault(x =>
+                x.BroadcasterId == barrage.First().DirectedAtId
+            );
+            var npcShooting = Npcs.FirstOrDefault(x =>
+                x.BroadcasterId == barrage.First().SendingEntity.BroadcasterId
+            );
+            if (IsDmgValid(npcShooting, npcGettingShot))
+            {
+                foreach (var shot in barrage)
+                {
+                    var probabilityOfHit = 2;
+                    Console.ForegroundColor = npcGettingShot.Color;
+                    if (shot.Accuracy > probabilityOfHit)
+                    {
+                        ValidShot(shot, npcGettingShot);
+                        if (npcGettingShot.Health <= 0)
+                        {
+                            NpcDead(npcGettingShot);
+                        }
+                    }
+                }
+            }
+        }
+
+        private static bool IsDmgValid(INpcEntity shootingNpc, INpcEntity npcGettingShot)
+        {
+            if (npcGettingShot == null || shootingNpc == null)
+                return false;
+            if (!npcGettingShot!.IsAlive)
+                return false;
+            if (!shootingNpc!.IsAlive)
+                return false;
+            return true;
+        }
+
+        private void ValidShot(DamageMessage shot, INpcEntity npcGettingShot)
+        {
+            shot.HitsTarget = true;
+            npcGettingShot.Health -= shot.Damage;
+            Console.ForegroundColor = shot.SendingEntity!.Color;
+            Console.WriteLine(
+                $"Entity {shot.SendingEntity.NpcName} is shooting at {npcGettingShot.NpcName} for {shot.Damage}dmg and with {shot.Accuracy * 10}% of hitting! BANG! {(shot.Message.Contains("CHAOS") ? "CHAOS!!!!!" : "Retaliation shot :(")}"
+            );
+            PublishMessage(shot);
+        }
+
+        private void NpcDead(INpcEntity npcGettingShot)
+        {
+            var deathMessage = new DeathMessage(npcGettingShot);
+            PublishMessage(deathMessage);
+            Npcs.Remove(npcGettingShot);
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine(deathMessage.Message);
         }
 
         private void PublishMessage(IMessage message)
         {
-
-            if (message is DeathMessage deathMessage)
-            {
-                var deadNpc = Npcs.FirstOrDefault(x =>
-                    x.BroadcasterId == deathMessage.BroadcasterId
-                );
-                if (deadNpc != null)
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine(deathMessage.Message);
-                }
-            }
-            else if (Npcs.Select(x => x.BroadcasterId).Contains(message.BroadcasterId))
-            {
-                var dmgMessage = message as DamageMessage;
-                var npcShooting = Npcs.FirstOrDefault(x =>
-                    x.BroadcasterId == dmgMessage!.BroadcasterId
-                );
-                var npcGettingHit = Npcs.FirstOrDefault(x =>
-                    x.BroadcasterId == dmgMessage!.DirectedAtId
-                );
-
-                Console.ForegroundColor = npcShooting!.Color;
-                Console.WriteLine(
-                    $"Entity {dmgMessage!.BroadcasterName} is shooting for {dmgMessage.Damage}dmg and with {dmgMessage.Accuracy * 10}% of hitting! BANG! {(dmgMessage.Message.Contains("CHAOS") ? "CHAOS!!!!!" : "Retaliation shot :(")}"
-                );
-            }
             Parallel.ForEach(
                 _observers,
                 item =>
@@ -129,6 +143,13 @@
                     Task.Run(() => item.OnNext(message));
                 }
             );
+        }
+
+        public INpcEntity copyOf(INpcEntity entity)
+        {
+            string data = JsonConvert.SerializeObject(entity);
+            TrackedEntity copy = JsonConvert.DeserializeObject<TrackedEntity>(data)!;
+            return copy;
         }
     }
 

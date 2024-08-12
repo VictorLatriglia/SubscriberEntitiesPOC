@@ -21,7 +21,7 @@ namespace EntitiesEnvironment.Entities
 
         public double Damage { get; }
 
-        public double Health { get; private set; }
+        public double Health { get; set; }
 
         public bool IsAlive => Health > 0;
 
@@ -38,7 +38,6 @@ namespace EntitiesEnvironment.Entities
         )
         {
             this.environment = environment;
-            _cancellation = environment.RegisterNpc(this, this);
             BroadcasterId = Guid.NewGuid();
             NpcName = npcName;
             Color = color;
@@ -48,6 +47,7 @@ namespace EntitiesEnvironment.Entities
             probabilityToRetaliate = rng.Next(1, 10);
             Damage = rng.Next(1, 10);
             Health = 10;
+            _cancellation = environment.RegisterNpc(this, this);
         }
 
         public void OnCompleted() => messages.Clear();
@@ -59,48 +59,63 @@ namespace EntitiesEnvironment.Entities
 
         public void OnNext(IMessage value)
         {
-            if (value.BroadcasterId != BroadcasterId)
+            if (value.SendingEntity.BroadcasterId != BroadcasterId)
             {
                 bool shotsFired = false;
-                KnownEntities.Add(value.BroadcasterId);
+                KnownEntities.Add(value.SendingEntity.BroadcasterId);
                 if (value is DamageMessage dmgMessage && dmgMessage.DirectedAtId == BroadcasterId)
                 {
-                    var probabilityOfHit = 5;
                     AnimosityLevel += 1;
                     var probabilityOfRetaliation = 3;
                     Console.ForegroundColor = Color;
-                    if (dmgMessage.Accuracy > probabilityOfHit)
+                    if (dmgMessage.HitsTarget)
                     {
+                        double prevHealth = Health;
                         this.Health -= dmgMessage.Damage;
                         Console.WriteLine(
-                            $"Entity {NpcName} got shot!! their new health is {Health}"
+                            $"{NpcName} says: I got shot!! my health was {prevHealth}, now it's {Health}"
                         );
                     }
                     else
                     {
-                        Console.WriteLine($"Entity {NpcName} got shot!! but they missed lmao");
+                        Console.WriteLine($"{NpcName} says: I got shot!! but they missed lmao");
                     }
+
                     if (!IsAlive)
                     {
-                        Die(); //Lol, rip
-                        _cancellation!.Dispose();
                         return;
                     }
                     else if (probabilityToRetaliate + AnimosityLevel > probabilityOfRetaliation)
                     {
                         shotsFired = true;
-                        Shoot(dmgMessage.BroadcasterId, true);
+                        Shoot(dmgMessage.SendingEntity.BroadcasterId, true);
                     }
                 }
-                else if (value is DeathMessage deathMessage)
+                var peace = 0;
+                lock (KnownEntities)
                 {
-                    KnownEntities.Remove(deathMessage.BroadcasterId);
+                    if (AnimosityLevel > peace && KnownEntities.Count > 0 && !shotsFired)
+                    {
+                        var randomPerson = rng.Next(0, KnownEntities.Count);
+                        var entity = KnownEntities.ElementAt(randomPerson);
+                        if (entity != Guid.Empty)
+                            Shoot(entity, false);
+                    }
                 }
-                var peace = 4;
-                if (AnimosityLevel > peace && KnownEntities.Count > 0 && !shotsFired)
+            }
+            if (value is DeathMessage deathMessage)
+            {
+                if (value.SendingEntity.BroadcasterId == BroadcasterId)
                 {
-                    var randomPerson = rng.Next(0, KnownEntities.Count);
-                    Shoot(KnownEntities.ElementAt(randomPerson), false);
+                    Die(); //Lol, rip
+                    _cancellation!.Dispose();
+                }
+                else
+                {
+                    lock (KnownEntities)
+                    {
+                        KnownEntities.Remove(deathMessage.SendingEntity.BroadcasterId);
+                    }
                 }
             }
         }
@@ -109,25 +124,13 @@ namespace EntitiesEnvironment.Entities
         {
             Accuracy += 1;
             environment.SendMessage(
-                new DamageMessage(
-                    BroadcasterId,
-                    NpcName,
-                    Damage,
-                    Accuracy,
-                    directedAtId,
-                    isRetaliation
-                )
+                new DamageMessage(this, Damage, Accuracy, directedAtId, isRetaliation)
             );
         }
 
         public void Die()
         {
-            environment.SendMessage(new DeathMessage(BroadcasterId, NpcName));
-        }
-
-        public void Speak(string message)
-        {
-            environment.SendMessage(new NpcMessage(message, NpcName, BroadcasterId));
+            Console.WriteLine($"{NpcName} says: Man I'm ded *dies*");
         }
     }
 }

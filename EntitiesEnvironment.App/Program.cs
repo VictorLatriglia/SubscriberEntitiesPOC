@@ -25,7 +25,7 @@ if (aliveNpcs.Count == 1)
         $"We have a winner: {victor.NpcName}, with {victor.Health}hp remaining, nice"
     );
 }
-else
+else if (aliveNpcs.Count > 1)
 {
     Console.WriteLine("Press enter to shake the status quo hehe");
 
@@ -33,6 +33,10 @@ else
     Console.WriteLine("Creating chaos!!!!");
     //If they aint gonna kill themselves, I´ll force them to do so
     aliveNpcs.First().Shoot(aliveNpcs.Last().BroadcasterId, false);
+}
+else
+{
+    Console.WriteLine($"But nobody came...");
 }
 
 class NpcInfo

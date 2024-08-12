@@ -4,31 +4,28 @@
     {
         public string Message { get; }
 
-        public Guid BroadcasterId { get; }
+        public INpcEntity SendingEntity { get; }
 
         public double Damage { get; }
-
+        public bool HitsTarget { get; set; }
         public double Accuracy { get; set; }
 
         public Guid DirectedAtId { get; }
-        public string BroadcasterName { get; }
 
         public DamageMessage(
-            Guid broadcasterId,
-            string broadcasterName,
+            INpcEntity sendingEntity,
             double damage,
             double accuracy,
             Guid directedAtId,
             bool isRetaliation
         )
         {
-            BroadcasterId = broadcasterId;
+            SendingEntity = sendingEntity;
             Damage = damage;
             DirectedAtId = directedAtId;
-            BroadcasterName = broadcasterName;
             Accuracy = accuracy;
             Message =
-                $"Shooting initiaded by {broadcasterName} with a damage of {damage}, OUCH! --This was a {(isRetaliation ? "Retaliation" : "CHAOS!!!!!")} shot";
+                $"Shooting initiaded by {sendingEntity.NpcName} with a damage of {damage}, OUCH! --This was a {(isRetaliation ? "Retaliation" : "CHAOS!!!!!")} shot";
         }
     }
 }

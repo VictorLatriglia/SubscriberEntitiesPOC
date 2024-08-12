@@ -4,14 +4,12 @@
     {
         public string Message { get; }
 
-        public Guid BroadcasterId { get; }
-        public string BroadcasterName { get; }
+        public INpcEntity SendingEntity { get; }
 
-        public DeathMessage(Guid broadcasterId, string broadcasterName)
+        public DeathMessage(INpcEntity sendingEntity)
         {
-            BroadcasterId = broadcasterId;
-            Message = $"OH no!!! entity {broadcasterName} has died!!! RIP!";
-            BroadcasterName = broadcasterName;
+            SendingEntity = sendingEntity;
+            Message = $"OH no!!! entity {sendingEntity.NpcName} has died!!! RIP!";
         }
     }
 }
