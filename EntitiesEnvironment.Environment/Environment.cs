@@ -11,6 +11,7 @@
         public Environment()
         {
             Npcs = [];
+            Task.Run(BroadcastMessages);
         }
 
         public IDisposable RegisterNpc(IObserver<IMessage> observer, INpcEntity npc)
@@ -35,11 +36,10 @@
             return new Unsubscriber<IMessage>(_observers, observer);
         }
 
-        public void BroadcastMessage(IMessage message)
+        public void SendMessage(IMessage message)
         {
             lock (_messages)
             {
-                Thread.Sleep(10);
                 _messages.Add(message);
                 if (message is DeathMessage deathMessage)
                 {
@@ -48,9 +48,9 @@
                     );
                     if (deadNpc != null)
                     {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine(deathMessage.Message);
                         Npcs.Remove(deadNpc);
+                        PublishMessage(deathMessage);
+                        _messages.Remove(message);
                     }
                 }
                 else if (Npcs.Select(x => x.BroadcasterId).Contains(message.BroadcasterId))
@@ -65,30 +65,70 @@
 
                     if (npcGettingHit == null || npcShooting == null)
                     {
-                        RemoveMessage(message);
+                        _messages.Remove(message);
                         return;
                     }
-
-                    Console.ForegroundColor = npcShooting!.Color;
-                    Console.WriteLine(
-                        $"Entity {dmgMessage!.BroadcasterName} is shooting at {npcGettingHit!.NpcName} for {dmgMessage.Damage}dmg and with {dmgMessage.Accuracy * 10}% of hitting! BANG! {(dmgMessage.Message.Contains("CHAOS") ? "CHAOS!!!!!" : "Retaliation shot :(")}"
-                    );
-                    Parallel.ForEach(
-                        _observers,
-                        item =>
-                        {
-                            Task.Run(() => item.OnNext(message));
-                        }
-                    );
-                }
-
-                RemoveMessage(message);
-
-                void RemoveMessage(IMessage message)
-                {
-                    _messages.Remove(message);
                 }
             }
+        }
+
+        private void BroadcastMessages()
+        {
+            int count = 0;
+            while (count < 4)
+            {
+                lock (_messages)
+                {
+                    Console.WriteLine("Sending messages....");
+                    if (_messages.Count == 0)
+                        count++;
+                    foreach (var message in _messages)
+                    {
+                        PublishMessage(message);
+                    }
+                    _messages.Clear();
+                    Console.WriteLine(".....SENT......");
+                }
+                Thread.Sleep(1000);
+            }
+        }
+
+        private void PublishMessage(IMessage message)
+        {
+
+            if (message is DeathMessage deathMessage)
+            {
+                var deadNpc = Npcs.FirstOrDefault(x =>
+                    x.BroadcasterId == deathMessage.BroadcasterId
+                );
+                if (deadNpc != null)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine(deathMessage.Message);
+                }
+            }
+            else if (Npcs.Select(x => x.BroadcasterId).Contains(message.BroadcasterId))
+            {
+                var dmgMessage = message as DamageMessage;
+                var npcShooting = Npcs.FirstOrDefault(x =>
+                    x.BroadcasterId == dmgMessage!.BroadcasterId
+                );
+                var npcGettingHit = Npcs.FirstOrDefault(x =>
+                    x.BroadcasterId == dmgMessage!.DirectedAtId
+                );
+
+                Console.ForegroundColor = npcShooting!.Color;
+                Console.WriteLine(
+                    $"Entity {dmgMessage!.BroadcasterName} is shooting for {dmgMessage.Damage}dmg and with {dmgMessage.Accuracy * 10}% of hitting! BANG! {(dmgMessage.Message.Contains("CHAOS") ? "CHAOS!!!!!" : "Retaliation shot :(")}"
+                );
+            }
+            Parallel.ForEach(
+                _observers,
+                item =>
+                {
+                    Task.Run(() => item.OnNext(message));
+                }
+            );
         }
     }
 

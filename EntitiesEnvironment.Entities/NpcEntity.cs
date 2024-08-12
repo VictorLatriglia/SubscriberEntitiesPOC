@@ -108,7 +108,7 @@ namespace EntitiesEnvironment.Entities
         public void Shoot(Guid directedAtId, bool isRetaliation)
         {
             Accuracy += 1;
-            environment.BroadcastMessage(
+            environment.SendMessage(
                 new DamageMessage(
                     BroadcasterId,
                     NpcName,
@@ -122,12 +122,12 @@ namespace EntitiesEnvironment.Entities
 
         public void Die()
         {
-            environment.BroadcastMessage(new DeathMessage(BroadcasterId, NpcName));
+            environment.SendMessage(new DeathMessage(BroadcasterId, NpcName));
         }
 
         public void Speak(string message)
         {
-            environment.BroadcastMessage(new NpcMessage(message, NpcName, BroadcasterId));
+            environment.SendMessage(new NpcMessage(message, NpcName, BroadcasterId));
         }
     }
 }
