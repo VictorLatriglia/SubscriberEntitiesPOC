@@ -21,7 +21,9 @@ var aliveNpcs = environment.Npcs;
 if (aliveNpcs.Count == 1)
 {
     var victor = aliveNpcs.First()!;
-    Console.WriteLine($"We have a winner: {victor.NpcName}, with {victor.Health}hp remaining, nice");
+    Console.WriteLine(
+        $"We have a winner: {victor.NpcName}, with {victor.Health}hp remaining, nice"
+    );
 }
 else
 {
@@ -31,7 +33,6 @@ else
     Console.WriteLine("Creating chaos!!!!");
     //If they aint gonna kill themselves, I´ll force them to do so
     aliveNpcs.First().Shoot(aliveNpcs.Last().BroadcasterId, false);
-
 }
 
 class NpcInfo

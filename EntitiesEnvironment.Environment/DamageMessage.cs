@@ -1,5 +1,4 @@
-﻿
-namespace EntitiesEnvironment.Environment
+﻿namespace EntitiesEnvironment.Environment
 {
     public class DamageMessage : IMessage
     {
@@ -14,14 +13,22 @@ namespace EntitiesEnvironment.Environment
         public Guid DirectedAtId { get; }
         public string BroadcasterName { get; }
 
-        public DamageMessage(Guid broadcasterId, string broadcasterName, double damage, double accuracy, Guid directedAtId, bool isRetaliation)
+        public DamageMessage(
+            Guid broadcasterId,
+            string broadcasterName,
+            double damage,
+            double accuracy,
+            Guid directedAtId,
+            bool isRetaliation
+        )
         {
             BroadcasterId = broadcasterId;
             Damage = damage;
             DirectedAtId = directedAtId;
             BroadcasterName = broadcasterName;
             Accuracy = accuracy;
-            Message = $"Shooting initiaded by {broadcasterName} with a damage of {damage}, OUCH! --This was a {(isRetaliation?"Retaliation":"CHAOS!!!!!")} shot";
+            Message =
+                $"Shooting initiaded by {broadcasterName} with a damage of {damage}, OUCH! --This was a {(isRetaliation ? "Retaliation" : "CHAOS!!!!!")} shot";
         }
     }
 }

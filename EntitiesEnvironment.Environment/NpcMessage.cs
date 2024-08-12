@@ -1,5 +1,4 @@
-﻿
-namespace EntitiesEnvironment.Environment
+﻿namespace EntitiesEnvironment.Environment
 {
     public class NpcMessage : IMessage
     {

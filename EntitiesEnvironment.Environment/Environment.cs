@@ -6,7 +6,6 @@
 
         private readonly HashSet<IMessage> _messages = [];
 
-
         public HashSet<INpcEntity> Npcs { get; }
 
         public Environment()
@@ -44,7 +43,9 @@
                 _messages.Add(message);
                 if (message is DeathMessage deathMessage)
                 {
-                    var deadNpc = Npcs.FirstOrDefault(x => x.BroadcasterId == deathMessage.BroadcasterId);
+                    var deadNpc = Npcs.FirstOrDefault(x =>
+                        x.BroadcasterId == deathMessage.BroadcasterId
+                    );
                     if (deadNpc != null)
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
@@ -55,8 +56,12 @@
                 else if (Npcs.Select(x => x.BroadcasterId).Contains(message.BroadcasterId))
                 {
                     var dmgMessage = message as DamageMessage;
-                    var npcShooting = Npcs.FirstOrDefault(x => x.BroadcasterId == dmgMessage!.BroadcasterId);
-                    var npcGettingHit = Npcs.FirstOrDefault(x => x.BroadcasterId == dmgMessage!.DirectedAtId);
+                    var npcShooting = Npcs.FirstOrDefault(x =>
+                        x.BroadcasterId == dmgMessage!.BroadcasterId
+                    );
+                    var npcGettingHit = Npcs.FirstOrDefault(x =>
+                        x.BroadcasterId == dmgMessage!.DirectedAtId
+                    );
 
                     if (npcGettingHit == null || npcShooting == null)
                     {
@@ -65,11 +70,16 @@
                     }
 
                     Console.ForegroundColor = npcShooting!.Color;
-                    Console.WriteLine($"Entity {dmgMessage!.BroadcasterName} is shooting at {npcGettingHit!.NpcName} for {dmgMessage.Damage}dmg and with {dmgMessage.Accuracy * 10}% of hitting! BANG! {(dmgMessage.Message.Contains("CHAOS") ? "CHAOS!!!!!" : "Retaliation shot :(")}");
-                    Parallel.ForEach(_observers, item =>
-                    {
-                        Task.Run(() => item.OnNext(message));
-                    });
+                    Console.WriteLine(
+                        $"Entity {dmgMessage!.BroadcasterName} is shooting at {npcGettingHit!.NpcName} for {dmgMessage.Damage}dmg and with {dmgMessage.Accuracy * 10}% of hitting! BANG! {(dmgMessage.Message.Contains("CHAOS") ? "CHAOS!!!!!" : "Retaliation shot :(")}"
+                    );
+                    Parallel.ForEach(
+                        _observers,
+                        item =>
+                        {
+                            Task.Run(() => item.OnNext(message));
+                        }
+                    );
                 }
 
                 RemoveMessage(message);
@@ -79,17 +89,16 @@
                     _messages.Remove(message);
                 }
             }
-
         }
     }
+
     public sealed class Unsubscriber<T> : IDisposable
     {
         private readonly ISet<IObserver<T>> _observers;
         private readonly IObserver<T> _observer;
 
-        internal Unsubscriber(
-            ISet<IObserver<T>> observers,
-            IObserver<T> observer) => (_observers, _observer) = (observers, observer);
+        internal Unsubscriber(ISet<IObserver<T>> observers, IObserver<T> observer) =>
+            (_observers, _observer) = (observers, observer);
 
         public void Dispose() => _observers.Remove(_observer);
     }

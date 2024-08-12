@@ -4,7 +4,6 @@ namespace EntitiesEnvironment.Entities
 {
     public class NpcEntity : INpcEntity
     {
-
         private readonly IDisposable? _cancellation;
         private readonly List<IMessage> messages = [];
         private readonly IEnvironment environment;
@@ -31,7 +30,12 @@ namespace EntitiesEnvironment.Entities
 
         private readonly Random rng = new();
 
-        public NpcEntity(IEnvironment environment, Faction faction, string npcName, ConsoleColor color)
+        public NpcEntity(
+            IEnvironment environment,
+            Faction faction,
+            string npcName,
+            ConsoleColor color
+        )
         {
             this.environment = environment;
             _cancellation = environment.RegisterNpc(this, this);
@@ -44,7 +48,6 @@ namespace EntitiesEnvironment.Entities
             probabilityToRetaliate = rng.Next(1, 10);
             Damage = rng.Next(1, 10);
             Health = 10;
-
         }
 
         public void OnCompleted() => messages.Clear();
@@ -60,9 +63,7 @@ namespace EntitiesEnvironment.Entities
             {
                 bool shotsFired = false;
                 KnownEntities.Add(value.BroadcasterId);
-                if (
-                    value is DamageMessage dmgMessage &&
-                    dmgMessage.DirectedAtId == BroadcasterId)
+                if (value is DamageMessage dmgMessage && dmgMessage.DirectedAtId == BroadcasterId)
                 {
                     var probabilityOfHit = 5;
                     AnimosityLevel += 1;
@@ -71,7 +72,9 @@ namespace EntitiesEnvironment.Entities
                     if (dmgMessage.Accuracy > probabilityOfHit)
                     {
                         this.Health -= dmgMessage.Damage;
-                        Console.WriteLine($"Entity {NpcName} got shot!! their new health is {Health}");
+                        Console.WriteLine(
+                            $"Entity {NpcName} got shot!! their new health is {Health}"
+                        );
                     }
                     else
                     {
@@ -105,7 +108,16 @@ namespace EntitiesEnvironment.Entities
         public void Shoot(Guid directedAtId, bool isRetaliation)
         {
             Accuracy += 1;
-            environment.BroadcastMessage(new DamageMessage(BroadcasterId, NpcName, Damage, Accuracy, directedAtId, isRetaliation));
+            environment.BroadcastMessage(
+                new DamageMessage(
+                    BroadcasterId,
+                    NpcName,
+                    Damage,
+                    Accuracy,
+                    directedAtId,
+                    isRetaliation
+                )
+            );
         }
 
         public void Die()
